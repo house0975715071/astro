@@ -1,0 +1,562 @@
+/* 西洋占星 免費星盤（網頁版）— 手機優先。
+   設計「暮光雙層」（桃紅西方玄學版）：頁首＋輸入卡＋總覽＋星盤輪盤在深夜空（桃紅光暈、香檳金細線、星點），
+   往下的長篇解說改成粉白紙卡（塔羅牌框：內框金線＋四角小星芒，好讀），中間用月相分隔的暮光帶銜接；
+   名片卡再回到夜空當收尾，頁尾回到淺色（法定簽名檔放金框方塊，字要清楚）。
+   顏色全部寫死（單一模式），圖表顏色在 charts.js 的 COLORS，兩邊要一起改。
+   裝飾（星點、星芒、月相、星盤儀水印）全部是 CSS 漸層或 data: SVG，不連任何外部資源；不用 ♈ 這類星座字元（Windows 會畫成 emoji）。
+   夜空底色是 #form-card／#wheel-card 往上延伸的偽元素（z-index:-2）：不改 DOM 就能讓深色區剛好停在輪盤卡下面。
+   注意：這幾張卡不能加 transform／opacity／filter／backdrop-filter，否則偽元素會被關進卡片裡。 */
+:root{
+  /* 淺色區（紙卡） */
+  --bg:#f6ecf1; --paper:#fffafc; --surface:#fffafc; --tint:#fbf1f5; --tint2:#f7e6ee;
+  --line:#eedbe4; --line2:#a78797;
+  --ink:#2b1c26; --ink2:#654e5c; --ink3:#78606e;
+  --rose:#c2266f; --rose-d:#a01c5b; --rose-ink:#a8185c; --rose-soft:#fbe4ef; --wine:#8e1c4a;
+  --gold:#b08414; --gold-d:#86620f; --gold-ink:#6e4f08; --gold-soft:#fdf6e6; --champ:#c9a45c; --accent:#a8185c;
+  --data:#5760c8; --star:#7c1d57; --minor:#86620f;
+  --green:#2b7a57; --red:#9a1c3a; --amber:#8f5d14;
+  /* 深色區（夜空） */
+  --night:#150b1b; --night2:#221029; --night3:#35163d;
+  --glass:#2e1436; --glass2:#241030;
+  --d-ink:#fdf3f8; --d-ink2:#ead3df; --d-ink3:#d2b5c5; --d-link:#ffb6d8; --d-gold:#f0d49b; --d-rose:#ff8fb4;
+  --d-line:rgba(240,200,222,.2); --d-green:#9be3bf;
+  --focus:#e0569a;
+  --sans:system-ui,"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+  --serif:"Noto Serif TC","Songti TC","PMingLiU","MingLiU",serif;
+  --stars:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cg fill='%23fff'%3E%3Ccircle cx='12' cy='18' r='.9' opacity='.7'/%3E%3Ccircle cx='58' cy='92' r='.6' opacity='.5'/%3E%3Ccircle cx='101' cy='31' r='1.1' opacity='.8'/%3E%3Ccircle cx='147' cy='140' r='.7' opacity='.55'/%3E%3Ccircle cx='190' cy='64' r='.9' opacity='.65'/%3E%3Ccircle cx='222' cy='190' r='.6' opacity='.5'/%3E%3Ccircle cx='31' cy='171' r='.8' opacity='.6'/%3E%3Ccircle cx='88' cy='214' r='.6' opacity='.45'/%3E%3Ccircle cx='171' cy='222' r='1' opacity='.7'/%3E%3Ccircle cx='128' cy='182' r='.5' opacity='.4'/%3E%3Ccircle cx='207' cy='12' r='.6' opacity='.5'/%3E%3Ccircle cx='70' cy='140' r='.5' opacity='.4'/%3E%3C/g%3E%3Cg fill='%23ffd9ea'%3E%3Ccircle cx='160' cy='38' r='1.2' opacity='.6'/%3E%3Ccircle cx='40' cy='110' r='1' opacity='.5'/%3E%3C/g%3E%3C/svg%3E");
+  --twinkle:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='200'%3E%3Cg fill='%23fff'%3E%3Ccircle cx='40' cy='30' r='1.3'/%3E%3Ccircle cx='250' cy='52' r='1.1'/%3E%3Ccircle cx='150' cy='150' r='1.2'/%3E%3Ccircle cx='298' cy='170' r='.9'/%3E%3C/g%3E%3Cpath fill='%23f0d49b' d='M205 104l1.3 3.7 3.7 1.3-3.7 1.3-1.3 3.7-1.3-3.7-3.7-1.3 3.7-1.3z'/%3E%3C/svg%3E");
+  /* 月相分隔（○ 眉月 上弦 ● 下弦 殘月 ○）：暮光帶用、頁尾上緣用 */
+  --moon-dusk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='16'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%23b08414' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23b08414'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='1' x2='0'%3E%3Cstop offset='0' stop-color='%23b08414' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23b08414'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0 8h62.5' stroke='url(%23a)'/%3E%3Cpath d='M177.5 8H240' stroke='url(%23b)'/%3E%3Ccircle cx='65.5' cy='8' r='1.4' fill='%23c2266f'/%3E%3Ccircle cx='174.5' cy='8' r='1.4' fill='%23c2266f'/%3E%3Ccircle cx='75' cy='8' r='4.5' fill='none' stroke='%239a6f10' stroke-width='1'/%3E%3Ccircle cx='90' cy='8' r='4.5' fill='none' stroke='%239a6f10' stroke-width='1'/%3E%3Cpath fill='%23c2266f' d='M90,3.5A4.5,4.5 0 0 1 90,12.5A2.25,4.5 0 0 0 90,3.5Z'/%3E%3Ccircle cx='105' cy='8' r='4.5' fill='none' stroke='%239a6f10' stroke-width='1'/%3E%3Cpath fill='%23c2266f' d='M105,3.5A4.5,4.5 0 0 1 105,12.5Z'/%3E%3Ccircle cx='120' cy='8' r='4.5' fill='none' stroke='%239a6f10' stroke-width='1'/%3E%3Ccircle cx='120' cy='8' r='4.5' fill='%23c2266f'/%3E%3Ccircle cx='135' cy='8' r='4.5' fill='none' stroke='%239a6f10' stroke-width='1'/%3E%3Cpath fill='%23c2266f' d='M135,3.5A4.5,4.5 0 0 0 135,12.5Z'/%3E%3Ccircle cx='150' cy='8' r='4.5' fill='none' stroke='%239a6f10' stroke-width='1'/%3E%3Cpath fill='%23c2266f' d='M150,3.5A4.5,4.5 0 0 0 150,12.5A2.25,4.5 0 0 1 150,3.5Z'/%3E%3Ccircle cx='165' cy='8' r='4.5' fill='none' stroke='%239a6f10' stroke-width='1'/%3E%3C/svg%3E");
+  --moon-foot:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='16'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%23c9a45c' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23c9a45c'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='1' x2='0'%3E%3Cstop offset='0' stop-color='%23c9a45c' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23c9a45c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0 8h62.5' stroke='url(%23a)'/%3E%3Cpath d='M177.5 8H240' stroke='url(%23b)'/%3E%3Ccircle cx='65.5' cy='8' r='1.4' fill='%23c2266f'/%3E%3Ccircle cx='174.5' cy='8' r='1.4' fill='%23c2266f'/%3E%3Ccircle cx='75' cy='8' r='4.5' fill='%23f6ecf1' stroke='%239a6f10' stroke-width='1'/%3E%3Ccircle cx='90' cy='8' r='4.5' fill='%23f6ecf1' stroke='%239a6f10' stroke-width='1'/%3E%3Cpath fill='%23c2266f' d='M90,3.5A4.5,4.5 0 0 1 90,12.5A2.25,4.5 0 0 0 90,3.5Z'/%3E%3Ccircle cx='105' cy='8' r='4.5' fill='%23f6ecf1' stroke='%239a6f10' stroke-width='1'/%3E%3Cpath fill='%23c2266f' d='M105,3.5A4.5,4.5 0 0 1 105,12.5Z'/%3E%3Ccircle cx='120' cy='8' r='4.5' fill='%23f6ecf1' stroke='%239a6f10' stroke-width='1'/%3E%3Ccircle cx='120' cy='8' r='4.5' fill='%23c2266f'/%3E%3Ccircle cx='135' cy='8' r='4.5' fill='%23f6ecf1' stroke='%239a6f10' stroke-width='1'/%3E%3Cpath fill='%23c2266f' d='M135,3.5A4.5,4.5 0 0 0 135,12.5Z'/%3E%3Ccircle cx='150' cy='8' r='4.5' fill='%23f6ecf1' stroke='%239a6f10' stroke-width='1'/%3E%3Cpath fill='%23c2266f' d='M150,3.5A4.5,4.5 0 0 0 150,12.5A2.25,4.5 0 0 1 150,3.5Z'/%3E%3Ccircle cx='165' cy='8' r='4.5' fill='%23f6ecf1' stroke='%239a6f10' stroke-width='1'/%3E%3C/svg%3E");
+  /* 四芒星：淺色卡標題（桃紅）、深色卡標題（香檳金）、塔羅框四角（金） */
+  --star-rose:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23c2266f' d='M7 0L8.82 5.18L14 7L8.82 8.82L7 14L5.18 8.82L0 7L5.18 5.18Z'/%3E%3C/svg%3E");
+  --star-gold:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23f0d49b' d='M7 0L8.82 5.18L14 7L8.82 8.82L7 14L5.18 8.82L0 7L5.18 5.18Z'/%3E%3C/svg%3E");
+  --corner:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 11 11'%3E%3Cpath fill='%23c9a45c' d='M5.5 0L6.93 4.07L11 5.5L6.93 6.93L5.5 11L4.07 6.93L0 5.5L4.07 4.07Z'/%3E%3C/svg%3E");
+  /* 星盤儀＋九芒星水印（頁首右側，只在 ≥600px） */
+  --astro:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cg fill='none' stroke='%23f0d49b'%3E%3Ccircle cx='130' cy='130' r='128' stroke-width='1.2'/%3E%3Ccircle cx='130' cy='130' r='116'/%3E%3Ccircle cx='130' cy='130' r='71.92'/%3E%3Cpath stroke-width='.8' d='M258 130L246 130M257.51 141.16L252.53 140.72M256.06 152.23L251.13 151.36M253.64 163.13L248.81 161.83M250.28 173.78L245.58 172.07M246.01 184.1L241.48 181.98M240.85 194L230.46 188M234.85 203.42L230.76 200.55M228.05 212.28L224.22 209.06M220.51 220.51L216.97 216.97M212.28 228.05L209.06 224.22M203.42 234.85L200.55 230.76M194 240.85L188 230.46M184.1 246.01L181.98 241.48M173.78 250.28L172.07 245.58M163.13 253.64L161.83 248.81M152.23 256.06L151.36 251.13M141.16 257.51L140.72 252.53M130 258L130 246M118.84 257.51L119.28 252.53M107.77 256.06L108.64 251.13M96.87 253.64L98.17 248.81M86.22 250.28L87.93 245.58M75.9 246.01L78.02 241.48M66 240.85L72 230.46M56.58 234.85L59.45 230.76M47.72 228.05L50.94 224.22M39.49 220.51L43.03 216.97M31.95 212.28L35.78 209.06M25.15 203.42L29.24 200.55M19.15 194L29.54 188M13.99 184.1L18.52 181.98M9.72 173.78L14.42 172.07M6.36 163.13L11.19 161.83M3.94 152.23L8.87 151.36M2.49 141.16L7.47 140.72M2 130L14 130M2.49 118.84L7.47 119.28M3.94 107.77L8.87 108.64M6.36 96.87L11.19 98.17M9.72 86.22L14.42 87.93M13.99 75.9L18.52 78.02M19.15 66L29.54 72M25.15 56.58L29.24 59.45M31.95 47.72L35.78 50.94M39.49 39.49L43.03 43.03M47.72 31.95L50.94 35.78M56.58 25.15L59.45 29.24M66 19.15L72 29.54M75.9 13.99L78.02 18.52M86.22 9.72L87.93 14.42M96.87 6.36L98.17 11.19M107.77 3.94L108.64 8.87M118.84 2.49L119.28 7.47M130 2L130 14M141.16 2.49L140.72 7.47M152.23 3.94L151.36 8.87M163.13 6.36L161.83 11.19M173.78 9.72L172.07 14.42M184.1 13.99L181.98 18.52M194 19.15L188 29.54M203.42 25.15L200.55 29.24M212.28 31.95L209.06 35.78M220.51 39.49L216.97 43.03M228.05 47.72L224.22 50.94M234.85 56.58L230.76 59.45M240.85 66L230.46 72M246.01 75.9L241.48 78.02M250.28 86.22L245.58 87.93M253.64 96.87L248.81 98.17M256.06 107.77L251.13 108.64M257.51 118.84L252.53 119.28'/%3E%3Cpath stroke-width='1' d='M130 14L169.67 239L55.44 41.14L230.46 188L15.76 109.86L244.24 109.86L29.54 188L204.56 41.14L90.33 239L130 14Z'/%3E%3C/g%3E%3Ccircle cx='130' cy='130' r='3' fill='%23f0d49b'/%3E%3C/svg%3E");
+  color-scheme:light;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.75 var(--sans);overflow-x:hidden}
+h1,h2,h3,h4,p{margin:0}
+a{color:var(--accent)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none !important}
+.wrap{width:100%;max-width:1080px;margin:0 auto;padding:0 16px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--rose);color:#fff;padding:10px 14px;z-index:99;border-radius:6px}
+.skip:focus{left:8px;top:8px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* ---------- 夜空（深色區底） ---------- */
+/* 從卡片底往上延伸 9000px 的夜空：往上超出頁面頂端不會產生捲軸；底部 110px 淡出接到粉白底色 */
+#form-card,#wheel-card{position:relative}
+#form-card::before,#wheel-card::before{content:"";position:absolute;z-index:-2;pointer-events:none;
+  left:50%;width:100vw;margin-left:-50vw;height:9000px;
+  -webkit-mask-image:linear-gradient(to top,transparent 0,#000 110px);mask-image:linear-gradient(to top,transparent 0,#000 110px)}
+/* 還沒排盤：夜空停在頁尾上緣，純夜色淡出（不放桃紅地平線，避免表單卡兩側看起來在漏光） */
+#form-card::before{bottom:-100px;
+  background:var(--stars) 0 0/240px 240px,linear-gradient(180deg,var(--night) 0,var(--night2) 100%)}
+/* 排盤後改由輪盤卡的夜空蓋過去：暮光（桃紅地平線）只出現在輪盤卡下面 */
+#wheel-card::before{bottom:-60px;
+  background:var(--stars) 0 0/240px 240px,
+    linear-gradient(180deg,var(--night) 0,var(--night2) 8300px,#3b1640 8800px,#7a2c66 100%)}
+/* 輪盤卡下方留 60px 當「暮光帶」：夜空在這段淡成粉白，正中一道月相分隔（刻意的設計，不是沒載完） */
+#wheel-card{margin-bottom:60px}
+#wheel-card::after{content:"";position:absolute;pointer-events:none;left:50%;bottom:-38px;width:240px;height:16px;margin-left:-120px;
+  background:var(--moon-dusk) center/240px 16px no-repeat}
+
+/* ---------- 頂部 ---------- */
+.site-head{position:relative;background:transparent;color:var(--d-ink);
+  border-bottom:1px solid transparent;border-image:linear-gradient(90deg,rgba(240,212,155,0),rgba(240,212,155,.55),rgba(240,212,155,0)) 1}
+/* 桃紅＋紫的光暈（往下延伸到輸入卡後面） */
+.site-head::before{content:"";position:absolute;z-index:-1;pointer-events:none;left:0;right:0;top:0;height:640px;
+  background:radial-gradient(60% 55% at 88% 0%,rgba(226,64,140,.42),rgba(226,64,140,0) 70%),
+    radial-gradient(50% 45% at 6% 18%,rgba(120,70,200,.28),rgba(120,70,200,0) 70%)}
+/* 會微微閃的幾顆星（只在頁首；減少動態時不動） */
+.site-head::after{content:"";position:absolute;z-index:-1;pointer-events:none;inset:0;
+  background:var(--twinkle) 0 0/320px 200px;opacity:.35;animation:twinkle 5.5s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.25}to{opacity:.85}}
+.head-in{position:relative;display:flex;flex-direction:column;gap:6px;padding-top:14px;padding-bottom:14px}
+/* 手機：logo＋標題一列，標語跨整列（2 行內），首屏多露出表單 */
+.brand{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:12px;row-gap:6px}
+.brand-text{display:contents}
+.logo{flex:0 0 auto;width:44px;height:44px;border-radius:50%;color:#fff;
+  background:radial-gradient(circle at 32% 28%,#f37bb3,#c2266f 62%,#8e1650);
+  box-shadow:0 0 0 1px var(--d-gold),0 0 0 4px rgba(240,212,155,.14),0 0 22px rgba(240,90,160,.55);
+  display:grid;place-items:center;font:700 21px/1 var(--serif)}
+.site-head h1{font:700 22px/1.35 var(--serif);letter-spacing:3px;color:#fff6fa;text-shadow:0 0 18px rgba(240,90,160,.35)}
+.tagline{grid-column:1/-1;font-size:13px;color:var(--d-ink2);line-height:1.6;letter-spacing:0}
+.maker{font-size:13px;color:var(--d-gold);align-self:flex-end;letter-spacing:1px;line-height:1.5}
+
+/* ---------- 卡片（淺色：粉白紙卡＝塔羅牌框） ---------- */
+/* 內框：outline 往內縮 7px 的金色細線（不占版面、跟著圓角走）；四角各一顆小四芒星 */
+main.wrap{padding-top:18px;padding-bottom:28px}
+.card{--frame:rgba(176,132,20,.36);
+  background:var(--corner) left 2px top 2px/11px 11px no-repeat,var(--corner) right 2px top 2px/11px 11px no-repeat,
+    var(--corner) left 2px bottom 2px/11px 11px no-repeat,var(--corner) right 2px bottom 2px/11px 11px no-repeat,var(--surface);
+  border:1px solid var(--line);border-radius:14px;outline:1px solid var(--frame);outline-offset:-7px;
+  padding:18px 14px;margin-bottom:18px;min-width:0;
+  box-shadow:0 1px 2px rgba(90,20,60,.05),0 12px 28px -18px rgba(120,30,80,.35)}
+.card:focus{outline:1px solid var(--frame)}
+/* 卡片標題：酒紅襯線＋桃紅四芒星 */
+.card-h{font:700 20px/1.4 var(--serif);letter-spacing:2px;color:var(--wine);margin-bottom:8px}
+.card-h::before{content:"";display:inline-block;width:14px;height:14px;margin-right:9px;vertical-align:-1px;
+  background:var(--star-rose) center/14px 14px no-repeat}
+.card-sub{font-size:14px;color:var(--ink2);margin-bottom:12px;line-height:1.65}
+.boot-note{background:rgba(255,255,255,.06);border:1px dashed rgba(240,212,155,.5);padding:10px 12px;border-radius:8px;
+  font-size:14.5px;color:var(--d-ink);margin-bottom:14px}
+
+/* ---------- 卡片（深色：夜空玻璃卡）＝ 輸入卡、總覽、輪盤 ---------- */
+.form-card,#ov,#wheel-card{--frame:rgba(240,212,155,.26);color:var(--d-ink);
+  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 40%),linear-gradient(180deg,var(--glass),var(--glass2));
+  border:1px solid rgba(240,212,155,.30);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 18px 40px -20px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.25)}
+.form-card .card-h,#ov .card-h,#wheel-card .card-h{color:#fff6fa}
+.form-card .card-h::before,#ov .card-h::before,#wheel-card .card-h::before{background-image:var(--star-gold)}
+.form-card .card-sub,#ov .card-sub,#wheel-card .card-sub{color:var(--d-ink2)}
+#wheel-card{background:radial-gradient(closest-side at 50% 55%,rgba(214,51,132,.30),rgba(140,40,150,.10) 60%,rgba(0,0,0,0)),
+  linear-gradient(180deg,var(--glass),var(--glass2))}
+#wheel-card .chart-note{color:var(--d-ink2)}
+.form-card a,#ov a,#wheel-card a{color:var(--d-link)}
+
+/* ---------- 按鈕 ---------- */
+.btn-primary,.btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:44px;padding:8px 18px;border-radius:999px;font-size:16px;font-weight:600;
+  text-decoration:none;letter-spacing:1px;border:1px solid transparent;touch-action:manipulation}
+.btn-primary{background:linear-gradient(135deg,#c92a74,#a81d60);color:#fff;border-color:#a81d60;
+  box-shadow:0 6px 16px -8px rgba(168,29,96,.8)}
+.btn-primary:hover{background:linear-gradient(135deg,#b3225f,#8f1850)}
+.btn-primary:disabled{opacity:.55;cursor:wait}
+.btn-ghost{background:#fff;color:var(--rose-ink);border-color:#e2bfd0}
+.btn-ghost:hover{background:var(--rose-soft)}
+.btn-ghost:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- 輸入卡 ---------- */
+.lock-note{font-size:14px;color:var(--d-green);margin-bottom:14px;display:flex;align-items:center;gap:8px;line-height:1.55}
+.lock-dot{width:9px;height:9px;border-radius:50%;background:var(--d-green);flex:0 0 auto;box-shadow:0 0 8px rgba(155,227,191,.8)}
+#birth-form{display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:5px;border:0;padding:0;margin:0;min-width:0}
+.field>label,.field legend,.field .lab{font-size:15px;font-weight:600;color:var(--ink);padding:0;margin-bottom:5px}
+.form-card .field>label,.form-card .field legend,.form-card .field .lab{color:var(--d-ink);letter-spacing:.5px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.help{font-size:14px;color:var(--ink2);line-height:1.55}
+.form-card .help{color:var(--d-ink2)}
+input[type=text],input[type=number],select{width:100%;min-height:46px;padding:8px 10px;font-size:16px;
+  border:1px solid var(--line2);border-radius:8px;background:#fffafc;color:var(--ink);font-family:var(--sans)}
+.form-card input[type=text],.form-card input[type=number],.form-card select{border-color:rgba(240,212,155,.55);
+  box-shadow:inset 0 1px 2px rgba(60,10,40,.12)}
+input::placeholder{color:#7d6573}
+input:focus,select:focus{border-color:var(--rose);outline:3px solid var(--focus);outline-offset:1px}
+input:disabled,select:disabled{background:#eadde4;color:#6c5663;cursor:not-allowed}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.seg{display:flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:#fff}
+.seg-opt{flex:1 1 0;position:relative;display:flex;min-width:0}
+.seg-opt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.seg-opt span{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;padding:4px 6px;
+  font-size:15px;color:var(--ink2);cursor:pointer;user-select:none;text-align:center;line-height:1.3}
+.seg-opt+.seg-opt span{border-left:1px solid var(--line)}
+.seg-opt input:checked+span{background:var(--rose);color:#fff;font-weight:700}
+.seg-opt input:focus-visible+span{outline:3px solid var(--focus);outline-offset:-3px}
+.form-card .seg{background:rgba(255,255,255,.06);border-color:rgba(240,212,155,.45)}
+.form-card .seg-opt span{color:var(--d-ink2)}
+.form-card .seg-opt+.seg-opt span{border-left-color:rgba(240,212,155,.3)}
+.form-card .seg-opt input:checked+span{background:linear-gradient(135deg,#c92a74,#a81d60);color:#fff}
+.date-row{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:8px}
+.time-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.date-part{display:flex;align-items:center;gap:4px;min-width:0}
+.date-part span{font-size:15px;color:var(--ink2);flex:0 0 auto}
+.form-card .date-part span{color:var(--d-ink2)}
+.date-part input,.date-part select{min-width:0}
+.check{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:15px;cursor:pointer}
+.check input{width:22px;height:22px;accent-color:var(--rose);margin:0}
+.form-card .check{color:var(--d-ink)}
+.custom-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;padding:10px;border:1px dashed var(--line2);border-radius:8px;background:var(--tint)}
+.form-card .custom-grid{background:rgba(255,255,255,.04);border-color:rgba(240,212,155,.4)}
+.custom-grid .field.wide{grid-column:1/-1}
+.custom-grid .lab{font-size:13.5px;margin-bottom:2px}
+.adv{border:1px solid var(--line);border-radius:8px;background:var(--tint);padding:0 12px}
+.form-card .adv{background:rgba(255,255,255,.04);border-color:rgba(240,212,155,.3)}
+.adv>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:15px;color:var(--rose-ink);font-weight:600;list-style:none}
+.form-card .adv>summary{color:var(--d-link)}
+.adv>summary::-webkit-details-marker{display:none}
+.adv>summary::before{content:'＋';margin-right:6px;font-weight:700}
+.adv[open]>summary::before{content:'－'}
+.adv .field{margin-bottom:12px}
+.form-err{background:#fde9ef;color:#8c1236;border:1px solid #f0bfd0;border-radius:8px;
+  padding:9px 12px;font-size:15px;line-height:1.55}
+/* 開始排盤：手機、電腦都跟欄位同寬 */
+.btn-go{width:100%;min-height:56px;font-size:18px;letter-spacing:4px;font-family:var(--serif);font-weight:700;
+  background:linear-gradient(135deg,#c92a74,#a81d60 55%,#8e1650);border-color:rgba(240,212,155,.55);
+  box-shadow:0 0 0 1px rgba(0,0,0,.2),0 10px 28px -10px rgba(226,64,140,.85)}
+.btn-go:hover{background:linear-gradient(135deg,#c42a70,#981a56 55%,#7a1245)}
+.info-note{background:#fdf2e2;color:#6f470c;border:1px solid #efd6a6;border-radius:8px;
+  padding:9px 12px;font-size:14.5px;line-height:1.55;margin-bottom:8px}
+.info-note+.info-note{margin-top:-2px}
+.btn-text{display:inline-flex;align-items:center;min-height:44px;padding:0 4px;border:0;background:transparent;
+  color:var(--rose-ink);font-size:15px;font-weight:600;text-decoration:underline;text-underline-offset:3px;touch-action:manipulation}
+.btn-text:hover{color:var(--rose-d)}
+#ov .btn-text,#wheel-card .btn-text,.form-card .btn-text{color:var(--d-link)}
+#ov .btn-text:hover{color:#fff}
+.redo{margin-top:8px;border-top:1px dashed var(--line);padding-top:4px}
+#ov .redo{border-top-color:var(--d-line);margin-top:12px}
+.soft-cta{margin-top:10px;font-size:14.5px;color:var(--ink2);display:flex;flex-wrap:wrap;align-items:center;gap:0 4px}
+
+/* ---------- 圖表共用 ---------- */
+.chart-box{margin:0;min-width:0}
+.chart-box.center .chart{display:flex;justify-content:center}
+.chart{min-width:0;width:100%;font-family:var(--sans)}
+.chart svg{display:block;max-width:100%;height:auto;margin:0 auto;font-family:var(--sans)}
+.chart-note{font-size:14px;color:var(--ink2);text-align:center;margin-top:6px;line-height:1.55}
+.aspect-charts{display:grid;grid-template-columns:1fr;gap:14px}
+.chart-empty{font-size:14px;color:var(--ink3);text-align:center;padding:20px 0}
+/* 輪盤最寬 640px（app.js 的 size 也夾在 280～640）；SVG 行內 style 已有 max-width:100%，會蓋掉這裡寫的 max-width，所以用 width:min() */
+/* 輪盤畫在粉白「星盤圓盤」上：夜空卡裡的一塊圓形亮面，外框香檳金細線＋桃紅光 */
+.chart.wheel svg{width:min(100%,640px);height:auto;border-radius:22px;
+  box-shadow:0 0 0 1px rgba(240,212,155,.8),0 0 0 6px rgba(240,212,155,.10),0 0 0 7px rgba(240,212,155,.28),0 14px 54px -8px rgba(226,64,140,.6)}
+/* 有上升點的星盤裁成正圓（上升、天頂字在外圈留白內，不會被裁到）；太陽盤左上角有說明字，維持圓角方形。
+   不支援 :has() 的瀏覽器整條略過 → 維持圓角方形，一樣看得到全部內容 */
+.chart.wheel svg:not(:has(.as-solar-label)){border-radius:50%}
+#wheel-card .chart-note{margin-top:16px}
+.chart .as-planet:focus-visible,.chart .as-house-axis:focus-visible,.chart .as-cycle:focus-visible{outline:none}
+/* 人生週期標籤：底色描邊加粗，「你現在」金線穿過時字仍然清楚（CSS 蓋 SVG 的 stroke-width 屬性） */
+.chart .as-cycle-label{stroke-width:6px}
+
+/* ---------- 總覽（上半夜空、下半淺色亮盤） ---------- */
+.ov-who{font:700 23px/1.45 var(--serif);color:var(--ink);letter-spacing:1px;margin:2px 0 10px}
+.ov-who strong{color:var(--star)}
+#ov .ov-who{color:#fff6fa}
+#ov .ov-who strong{color:var(--d-rose)}
+.big3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 14px}
+.big3 .b3{border:1px solid rgba(240,212,155,.35);border-radius:10px;padding:9px 6px;text-align:center;min-width:0;
+  background:radial-gradient(120% 90% at 50% 0%,rgba(226,64,140,.22),rgba(255,255,255,.03));
+  box-shadow:inset 0 2px 0 -1px rgba(255,143,180,.55)}
+.big3 .b3-k{display:block;font-size:14px;color:var(--d-ink2);letter-spacing:1px}
+.big3 .b3-v{display:block;font:700 19px/1.35 var(--serif);color:var(--d-gold);letter-spacing:1px}
+.big3 .b3-d{display:block;font-size:13.5px;color:var(--d-ink3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.big3 .b3.none .b3-v{font-size:14px;color:var(--d-ink3);font-weight:400}
+.ov-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;color:var(--ink2)}
+#ov .ov-meta{color:var(--d-ink2)}
+.pill{display:inline-flex;align-items:center;padding:2px 12px;border-radius:999px;color:#fff;font-size:13.5px;font-weight:700;line-height:1.7}
+/* app.js 行內寫死的分數色（TONE／PAT_TONE／週期色點／.dim 字色）→ 換成跟新配色搭、白字對比 >= 4.5 的色。
+   ※ app.js 改了這些 hex，這份清單要一起更新（用 [style*="#xxxxxx"] 比對行內 style）：
+     #b8860b 金（很強）→ #86620f　#b7791f 琥珀（留心）→ #8f5d14　#4a5568 灰（平順）→ #5c4a66
+     #2e7d5b 綠、#9b2c2c 紅：對比已夠，不換
+     週期色點 #b8860b／#256abf／#23211d → var(--gold)／var(--data)／var(--ink)
+     格局行內 .dim #8a8274 → var(--ink3)；宮位詳解「宮內行星」#6f6759 → var(--ink2) */
+.pill[style*="#b8860b"]{background:#86620f !important}
+.pill[style*="#b7791f"]{background:#8f5d14 !important}
+.pill[style*="#4a5568"]{background:#5c4a66 !important}
+.sc[style*="#b8860b"]{color:#86620f !important}
+.sc[style*="#b7791f"]{color:#8f5d14 !important}
+.sc[style*="#4a5568"]{color:#5c4a66 !important}
+/* 分類標籤（不能按）：香檳金方角標籤；桃紅只留給可以按的按鈕 */
+.pill.soft{background:var(--gold-soft);color:var(--gold-ink);border:1px solid #d9bd7c;border-radius:6px;font-weight:600;padding:1px 10px}
+#ov .pill.soft{background:transparent;color:var(--d-gold);border-color:rgba(240,212,155,.55)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tags span{background:var(--rose-soft);color:var(--rose-ink);padding:2px 10px;border-radius:999px;font-size:13.5px}
+#ov .tags span{background:rgba(255,143,180,.16);color:#ffd3e7;border:1px solid rgba(255,143,180,.4)}
+.ov-line{font:600 17px/1.75 var(--serif);background:var(--tint);border-left:4px solid var(--champ);
+  padding:10px 12px;border-radius:0 8px 8px 0}
+#ov .ov-line{background:rgba(255,255,255,.05);border-left-color:var(--d-rose);color:var(--d-ink)}
+.ov-line b{color:var(--gold-d);white-space:nowrap}
+#ov .ov-line b{color:var(--d-gold)}
+.ov-line b.low{color:var(--red)}
+#ov .ov-line b.low{color:#ffa3b8}
+/* 元素比例圖：夜空卡裡的一塊粉白亮盤（跟輪盤同一套：金框＋桃紅外光），撐滿卡寬、圖置中 */
+.elem-box{margin-top:14px}
+#ov .elem-box{background:var(--surface);border-radius:16px;padding:12px 12px 10px;
+  box-shadow:0 0 0 1px rgba(240,212,155,.75),0 0 0 5px rgba(240,212,155,.08),0 12px 40px -14px rgba(226,64,140,.6),inset 0 0 18px rgba(194,38,111,.07)}
+.elem-box .chart-note{text-align:left}
+#ov .elem-box .chart-note{color:var(--ink2);max-width:520px;margin:6px auto 0}
+/* 總覽裡展開的長文（詳細解說、格局）：跟長條圖一樣放淺色亮盤，長文不落在深色底 */
+.more{margin-top:12px;border-top:1px dashed var(--line);padding-top:6px}
+#ov .more{background:var(--surface);color:var(--ink);border:0;border-radius:14px;padding:0 14px 4px;
+  box-shadow:0 0 0 1px rgba(240,212,155,.6),inset 0 0 14px rgba(194,38,111,.05)}
+.more>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:15px;
+  color:var(--rose-ink);font-weight:600;list-style:none}
+.more>summary::-webkit-details-marker{display:none}
+.more>summary::before{content:'＋';margin-right:6px;font-weight:700}
+.more[open]>summary::before{content:'－'}
+#ov .more[open]>summary{border-bottom:1px dashed var(--line)}
+.prose p{font-family:var(--serif);font-size:16px;line-height:1.9;margin:8px 0}
+.pat{border:1px solid var(--line);border-left:4px solid var(--champ);background:var(--paper);
+  padding:9px 12px;margin:8px 0;border-radius:4px 8px 8px 4px}
+.pat.warn,.pat.bad{border-left-color:var(--red)}
+.pat.mixed{border-left-color:var(--amber)}
+#ov .pat{background:var(--tint)}
+.pat .dim[style]{color:var(--ink3) !important}
+.pat b{font-size:15px}
+.pat p{margin:4px 0 0;font-size:15px;line-height:1.75}
+
+/* ---------- 十二宮清單 ---------- */
+.palace-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}
+.pl-btn{display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:44px;
+  padding:5px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:14.5px;color:var(--ink);min-width:0;text-align:left}
+.pl-btn:hover{background:var(--rose-soft)}
+/* 宮名一行、主題放不下就整段換到下一行（不截成「…」） */
+.pl-btn .pl-n{display:flex;flex-wrap:wrap;align-items:center;gap:0 5px;min-width:0;line-height:1.35}
+.pl-btn .pl-n small{color:var(--ink3);font-size:13.5px;min-width:0;overflow-wrap:anywhere}
+.pl-btn .dot{width:9px;height:9px;border-radius:50%;background:var(--data);flex:0 0 auto}
+.pl-btn.top .dot{background:var(--gold)}
+.pl-btn.top{border-color:#e3cc98;background:#fdf7ea}
+.pl-btn .pl-s{font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto}
+
+/* ---------- 行星表、相位表 ---------- */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{width:100%;border-collapse:collapse;font-size:14px;line-height:1.5}
+.tbl th,.tbl td{padding:7px 6px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+.tbl th{font-size:14px;color:var(--ink2);font-weight:600;background:var(--tint)}
+.tbl td.num{font-variant-numeric:tabular-nums}
+.tbl td.dim,.tbl .dim{color:var(--ink3)}
+.tbl tr.row-btn{cursor:pointer}
+/* 整列可以按：每列至少 44px 高（手指好點） */
+.tbl tr.row-btn td{height:44px}
+.tbl tr.row-btn:hover td{background:var(--rose-soft)}
+.tbl tr.row-btn:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
+.tbl tr.axis td{color:var(--ink2);background:#fcf6f9}
+.tbl .p-name{font-weight:700;color:var(--star)}
+.tbl .retro{display:inline-block;font-size:13px;color:#fff;background:var(--amber);border-radius:3px;padding:0 4px;line-height:1.5;margin-left:3px;vertical-align:1px}
+.tbl .dig{display:inline-block;font-size:13px;font-weight:600;color:var(--gold-ink);background:#f7ecd5;border-radius:3px;padding:0 4px;line-height:1.5;margin-right:3px}
+.tbl .dig.weak{background:#f8e3ea;color:var(--red)}
+.tbl .asp-tense{color:var(--red);font-weight:600}
+.tbl .asp-soft{color:#3f47a8;font-weight:600}
+.tbl .asp-conj{color:var(--gold-d);font-weight:600}
+.tbl tr.asp-text td{white-space:normal;font-family:var(--serif);font-size:15px;line-height:1.8;color:var(--ink);background:var(--paper);padding:6px 8px 10px}
+.tbl-more{margin-top:10px;text-align:center}
+.tbl-more .btn-ghost{width:100%}
+
+/* ---------- 週期說明 ---------- */
+.curve-notes{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px}
+.curve-notes li{font-size:15px;line-height:1.65;padding:8px 10px;border-radius:8px;background:var(--tint);display:flex;gap:8px;align-items:flex-start}
+.curve-notes .k{flex:0 0 auto;font-weight:700;color:var(--ink)}
+.curve-notes .sw{width:10px;height:10px;border-radius:50%;margin-top:8px;flex:0 0 auto}
+/* app.js 行內寫死的色點：對齊 charts.js 新配色（清單見「分數色」那段註解） */
+.curve-notes .sw[style*="#b8860b"]{background:var(--gold) !important}
+.curve-notes .sw[style*="#256abf"]{background:var(--data) !important}
+.curve-notes .sw[style*="#23211d"]{background:var(--ink) !important}
+.curve-notes li.fine{background:transparent;padding:2px 10px;font-size:14px;color:var(--ink2)}
+.curve-notes .btn-text{min-height:0;padding:0 2px;font-size:15px}
+
+/* ---------- 語音 ---------- */
+.v-ctrl{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:8px}
+.v-ctrl button{padding-left:6px;padding-right:6px}
+.v-play{font-size:17px}
+.v-opts{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.v-opt{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;font-size:15px;color:var(--ink2)}
+.v-net{margin-top:8px;font-size:14px;color:#6f470c;background:#fdf2e2;border:1px solid #efd6a6;border-radius:6px;padding:7px 10px}
+.v-msg{font-size:14px;color:var(--ink2);margin-top:8px;min-height:1em}
+.v-msg.err{color:var(--red)}
+.v-unsup{font-size:15px;color:var(--ink2);background:var(--tint);border:1px dashed var(--line2);border-radius:8px;padding:10px 12px}
+.v-chapters{display:flex;gap:6px;overflow-x:auto;padding:8px 0 4px;margin-top:6px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.v-chip{flex:0 0 auto;min-height:44px;padding:4px 14px;border-radius:999px;border:1px solid var(--line);
+  background:#fff;font-size:14.5px;color:var(--ink2);white-space:nowrap}
+.v-chip.on{background:var(--rose);border-color:var(--rose);color:#fff;font-weight:700}
+.v-text{margin-top:8px;max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;
+  background:#fff;padding:10px 12px;font:16px/1.95 var(--serif);overscroll-behavior:contain}
+.v-seg{cursor:pointer;border-radius:3px;padding:1px 0;transition:background .15s}
+.v-seg:hover{background:var(--rose-soft)}
+.v-seg.now{background:#f9d3e4;color:#4a0f2e;box-shadow:0 0 0 2px #f9d3e4}
+
+/* ---------- 分頁 ---------- */
+.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding-bottom:4px;margin:4px 0 12px}
+.tab{min-height:48px;min-width:0;padding:4px 4px;border-radius:999px;border:1px solid var(--line);
+  background:#fff;color:var(--ink2);font-size:15px;letter-spacing:1px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.25}
+.tab small{font-size:13px;font-variant-numeric:tabular-nums}
+.tab[aria-selected=true]{background:linear-gradient(135deg,#c92a74,#a81d60);border-color:#a81d60;color:#fff;font-weight:700}
+.asp-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:4px}
+.asp-head .t{font:700 21px/1.4 var(--serif);letter-spacing:2px;color:var(--wine)}
+.asp-head .sc{font:700 28px/1.2 var(--sans);font-variant-numeric:tabular-nums}
+.asp-head .sc small{font-size:13px;font-weight:400;margin-left:2px}
+.asp-meta{font-size:14px;color:var(--ink2);margin-bottom:6px}
+.box{border:1px solid var(--line);border-radius:8px;background:var(--tint);padding:10px 12px;margin:10px 0}
+.box h3,.box h4{font-size:15.5px;color:var(--star);margin-bottom:4px}
+.box ul,.box ol{margin:0;padding-left:20px}
+.box li{margin:5px 0;font-size:15.5px;line-height:1.75}
+.box.good{border-left:4px solid var(--green)}
+.box.risk{border-left:4px solid var(--red)}
+.box.act{border-left:4px solid var(--champ);background:#fdf7ec}
+.two{display:grid;grid-template-columns:1fr;gap:0 12px}
+.refs{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.refs li{font-size:14.5px;display:flex;flex-wrap:wrap;gap:2px 8px;padding:6px 8px;background:var(--tint);border-radius:6px}
+.refs .r-s{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+.refs button{border:0;background:transparent;padding:0;font:inherit;font-weight:700;color:var(--rose-ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:44px;display:inline-flex;align-items:center}
+
+/* ---------- 工作 ---------- */
+.jobs{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.jobs li{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff}
+.jobs .j-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.jobs .j-rank{font:700 13px/1 var(--sans);color:#fff;background:var(--ink3);border-radius:999px;padding:4px 8px}
+.jobs li.top .j-rank{background:var(--gold-d)}
+.jobs li.top{border-color:#e3cc98;background:#fffaf0}
+.jobs .j-cat{font-weight:700;font-size:16px}
+.jobs .j-sc{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+.jobs .j-list{font-size:15px;margin-top:3px}
+.jobs .j-why{font-size:14px;color:var(--ink2)}
+
+/* ---------- 今年行運 ---------- */
+.y-lead{font:16px/1.85 var(--serif);margin-bottom:6px}
+.y-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 10px}
+.y-cell{border:1px solid var(--line);border-radius:10px;background:var(--tint);padding:8px 10px;min-width:0}
+.y-cell .k{display:block;font-size:14px;color:var(--ink2)}
+.y-cell .v{display:block;font:700 16px/1.4 var(--serif);color:var(--star)}
+.y-cell .s{display:block;font-size:13.5px;color:var(--ink3)}
+.stage{border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin:10px 0;background:#fff}
+.stage-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.stage-h b{font:700 17px/1.4 var(--serif)}
+.stage .hint{font-size:14px;color:var(--ink2);margin:4px 0}
+
+/* ---------- 報告 ---------- */
+.report-card .check{display:flex;width:max-content;max-width:100%;margin-bottom:8px}
+.report-card .btn-primary{width:100%}
+.btn-report{flex-wrap:wrap;gap:0 2px;line-height:1.35}
+.btn-report small{font-size:13px;font-weight:500;letter-spacing:0;white-space:nowrap;opacity:.95}
+.r-msg{font-size:14px;color:var(--ink2);margin-top:8px;min-height:1em}
+.r-msg.err{color:var(--red)}
+
+/* ---------- 名片卡（回到夜空當收尾） ---------- */
+.cta{--frame:rgba(240,212,155,.28);color:var(--d-ink);border-color:rgba(240,212,155,.45);
+  background:radial-gradient(90% 120% at 100% 0%,rgba(226,64,140,.38),rgba(226,64,140,0) 60%),
+    var(--stars) 0 0/240px 240px,linear-gradient(160deg,#35163d,#1d0d24)}
+.cta-in{display:flex;gap:12px;align-items:flex-start}
+.cta-logo{flex:0 0 auto;width:54px;height:54px;border-radius:50%;color:#fff;display:grid;place-items:center;font:700 24px/1 var(--serif);
+  background:radial-gradient(circle at 32% 28%,#f37bb3,#c2266f 62%,#8e1650);box-shadow:0 0 0 1px var(--d-gold),0 0 18px rgba(240,90,160,.5)}
+.cta-h{font:700 20px/1.4 var(--serif);color:var(--d-gold);letter-spacing:2px}
+.cta-text{font:16px/1.85 var(--serif);margin-top:4px;color:var(--d-ink)}
+.cta-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.btn-line{background:#1f7a4f;border-color:#1f7a4f;box-shadow:0 6px 16px -8px rgba(0,0,0,.6)}
+.btn-line:hover{background:#18643f}
+/* 打電話：香檳金字＋金框（跟「星」「良」圓章的金框呼應） */
+.cta .btn-ghost{background:rgba(255,255,255,.06);color:var(--d-gold);border-color:rgba(240,212,155,.7)}
+.cta .btn-ghost:hover{background:rgba(240,212,155,.14);color:#fff3d6}
+
+/* ---------- 底部（淺色，法定資訊要清楚） ---------- */
+.site-foot{position:relative;background:#f1e2e9;border-top:1px solid #e2c8d4;padding:26px 0 calc(28px + env(safe-area-inset-bottom));color:var(--ink2);
+  box-shadow:inset 0 3px 0 -1px rgba(201,164,92,.5)}
+/* 頁尾上緣正中的月相分隔 */
+.site-foot::before{content:"";position:absolute;pointer-events:none;left:50%;top:-8px;width:240px;height:16px;margin-left:-120px;
+  background:var(--moon-foot) center/240px 16px no-repeat}
+.notice h2{font:700 16px/1.5 var(--serif);color:var(--ink);margin-bottom:6px;letter-spacing:1px}
+.notice ul{margin:0;padding-left:18px}
+.notice li{font-size:14px;line-height:1.75;margin:3px 0;color:#5a4452}
+.notice b{color:var(--ink)}
+/* 法定簽名檔：金框淺底方塊，第一行酒紅襯線粗體當標題；字級不小於上面的說明 */
+.sign{margin-top:16px;padding:12px 14px;border:1px solid var(--champ);border-radius:10px;background:#fffafc;
+  font-size:14px;line-height:1.85;color:var(--ink);box-shadow:inset 0 0 0 3px #fffafc,inset 0 0 0 4px rgba(201,164,92,.28)}
+.sign p:first-child{font:700 16px/1.6 var(--serif);color:var(--wine);letter-spacing:1px;margin-bottom:4px;padding-bottom:6px;border-bottom:1px solid #eedbe4}
+.sign p:last-child{font-weight:700}
+.oss{font-size:14px;margin-top:8px}
+.oss a{color:#5a4452;display:inline-flex;align-items:center;min-height:44px}
+
+/* ---------- 彈出層（手機：底部；粉白紙） ---------- */
+.sheet{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center}
+.sheet-backdrop{position:absolute;inset:0;background:rgba(21,11,27,.62)}
+.sheet-panel{position:relative;width:100%;max-height:86vh;overflow-y:auto;background:var(--paper);
+  border-radius:18px 18px 0 0;padding:0 16px calc(20px + env(safe-area-inset-bottom));
+  box-shadow:0 -10px 40px rgba(40,5,30,.45),0 -1px 0 rgba(240,212,155,.8);overscroll-behavior:contain;animation:up .18s ease-out}
+.sheet-panel:focus{outline:none}
+@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+/* 標題列捲動時固定在上面：× 永遠按得到 */
+.sheet-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;
+  background:linear-gradient(90deg,var(--rose),var(--champ) 60%,rgba(201,164,92,0)) bottom left/100% 2px no-repeat,var(--paper);
+  margin:0 -16px 6px;padding:10px 8px 8px 16px}
+.sheet-x{flex:0 0 auto;margin-left:auto;width:44px;height:44px;border:0;background:transparent;font-size:28px;line-height:1;color:var(--ink2);border-radius:50%}
+.sheet-x:hover{background:var(--rose-soft)}
+.sh-title{font:700 20px/1.4 var(--serif);color:var(--star);letter-spacing:1px;min-width:0}
+.sh-close{width:100%;margin-top:14px}
+.sh-meta{font-size:14px;color:var(--ink2);margin:2px 0 8px}
+.sh-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+/* 可以按的：白底桃紅外框＋箭頭（標籤是金色方角，兩者一眼分得出） */
+.sh-chips button{min-height:44px;padding:2px 14px;border:1.5px solid var(--rose);border-radius:999px;background:#fff;font-size:14.5px;color:var(--rose-ink);font-weight:700;
+  box-shadow:0 2px 6px -3px rgba(168,24,92,.5)}
+.sh-chips button::after{content:"›";margin-left:6px;font-size:17px;line-height:1}
+.sh-chips button:hover{background:var(--rose-soft)}
+.sh-chips .none{font-size:14px;color:var(--ink3);align-self:center}
+.sh-chips .none[style]{color:var(--ink2) !important}
+body.no-scroll{overflow:hidden}
+
+/* ---------- 較寬的螢幕 ---------- */
+@media (min-width:600px){
+  .card{padding:22px 24px}
+  .head-in{flex-direction:row;justify-content:space-between;align-items:center;gap:8px;padding-top:26px;padding-bottom:22px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand-text{display:block}
+  .tagline{font-size:14px;margin-top:2px;max-width:640px}
+  .maker{align-self:auto;font-size:14px}
+  .site-head h1{font-size:27px}
+  .logo{width:52px;height:52px;font-size:25px}
+  /* 星盤儀＋九芒星水印：頁首右上，極淡（手機拿掉，不壓到標語） */
+  .head-in::before{content:"";position:absolute;z-index:-1;pointer-events:none;right:0;top:50%;width:260px;height:260px;margin-top:-150px;
+    background:var(--astro) center/260px 260px no-repeat;opacity:.16}
+  .ov-who{font-size:26px}
+  .big3 .b3-v{font-size:23px}
+  .palace-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .v-opts{grid-template-columns:1fr 1.6fr}
+  .two{grid-template-columns:1fr 1fr}
+  .report-card .btn-primary{width:auto}
+  .cta-btns{display:flex;flex-wrap:wrap}
+  .cta-btns a{min-width:160px}
+  .tbl{font-size:15px}
+  .tbl th,.tbl td{padding:8px 10px}
+  .tbl-more .btn-ghost{width:auto}
+  .y-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .custom-grid{grid-template-columns:1fr 1fr 1.4fr}
+  .custom-grid .field.wide{grid-column:auto}
+  #ov .more{padding:0 18px 6px}
+  .notice li{font-size:14.5px}
+  .sign{font-size:14.5px;padding:14px 18px}
+}
+@media (min-width:760px){
+  .aspect-charts{grid-template-columns:1fr 1fr;align-items:center}
+  .palace-list{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .sheet{align-items:center;padding:24px}
+  .sheet-panel{max-width:720px;border-radius:16px;padding:0 24px 24px;box-shadow:0 20px 60px rgba(40,5,30,.5),0 0 0 1px rgba(240,212,155,.7)}
+  .sheet-head{margin:0 -24px 6px;padding:14px 12px 10px 24px}
+  .curve-notes{grid-template-columns:1fr 1fr}
+}
+@media (max-width:359px){
+  .wrap{padding:0 12px}
+  .card{padding:14px 10px}
+  .big3{gap:5px}
+  .big3 .b3-v{font-size:16px}
+  .tbl{font-size:13px}
+  .tbl th,.tbl td{padding:6px 4px}
+  .seg-3 .seg-opt span{font-size:13.5px;padding:4px 3px}
+  .tagline{font-size:12.5px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+}
+@media print{
+  .site-head,.form-card,#voice-card,.cta,.report-card{display:none}
+  body{background:#fff;color:#000}
+  #form-card::before,#wheel-card::before,#wheel-card::after,.site-head::before,.site-head::after,.head-in::before,.site-foot::before{display:none}
+  #wheel-card{margin-bottom:18px}
+  .card,#ov,#wheel-card{background:#fff !important;color:#000;border:1px solid #bbb;box-shadow:none;outline:none;break-inside:avoid}
+  .card-h,#ov .card-h,#wheel-card .card-h,.asp-head .t,#ov .ov-who,#ov .ov-who strong,#ov .ov-line,#ov .ov-line b{color:#000 !important}
+  #ov .card-sub,#wheel-card .card-sub,#wheel-card .chart-note,#ov .ov-meta,.big3 .b3-k,.big3 .b3-d{color:#333 !important}
+  .big3 .b3{background:#fff;border-color:#bbb;box-shadow:none}
+  .big3 .b3-v{color:#000}
+  #ov .tags span,.pill.soft,#ov .pill.soft{background:#fff;color:#000;border:1px solid #bbb}
+  /* 分數膠囊：白底黑框黑字（省墨；行內 style 的底色也蓋掉） */
+  .pill,.pill[style]{background:#fff !important;color:#000 !important;border:1px solid #000}
+  #ov .ov-line,#ov .pat,.pat{background:#fff;border-color:#bbb}
+  /* 總覽的淺色亮盤、展開區：純白、不要框線與光暈 */
+  #ov .elem-box,#ov .more{background:#fff !important;box-shadow:none;border:0}
+  #ov .more[open]>summary{border-bottom-color:#bbb}
+  .chart.wheel svg{box-shadow:none;border:1px solid #bbb}
+  /* 圖表裡的粉白底、粉色格線 → 白底灰線（CSS 蓋 SVG 的 fill／stroke 屬性） */
+  .chart svg [fill="#fffafc"]{fill:#fff}
+  .chart svg [stroke="#fffafc"]{stroke:#fff}
+  .chart svg [stroke="#efdde6"]{stroke:#ccc}
+  .site-foot{background:#fff;box-shadow:none;border-top:1px solid #bbb}
+  .notice li,.sign,.oss a{color:#000}
+  .sign{background:#fff;border-color:#999;box-shadow:none}
+  .sign p:first-child{color:#000;border-bottom-color:#bbb}
+  #ov .more>summary,#ov .btn-text,#ov a,#ov .ov-line b.low,.pat .dim[style],#ov .tags span{color:#000 !important}
+  #ov .redo{border-top-color:#bbb}
+  a{color:#000}
+}
