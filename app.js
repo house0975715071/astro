@@ -1,15 +1,17 @@
 /* 西洋占星 免費星盤（網頁版）— 主程式
- * 全部在訪客自己的瀏覽器裡算：不連網、不存任何東西（沒有 cookie、沒有瀏覽器儲存、網址不帶生日）。
+ * 排盤全部在訪客自己的瀏覽器裡算：生日、出生時間、出生地不會送出去，也不存任何東西（沒有 cookie、沒有瀏覽器儲存、網址不帶生日）。
  * 重新整理就清空，這是故意的。
+ * 網頁版另外載入 lead.js：排盤前請客人留姓名電話（只送姓名、電話到阿良的 Google 表單）；這支只透過 window.__leadGate 問它，
+ * 本機版不載入 lead.js，沒有這一步。
  * 本機版（桌面殼）也載入這一支：排完盤會發 'astro:chart' 事件，並掛 window.astroApp 給名冊「開盤」用。
  */
-import { buildChart, houseName, HOUSE_SYSTEMS, DIGNITY_NAMES, PLANET_NAMES } from './lib/astro.js?v=00e539aa';
-import { analyze } from './lib/analyze.js?v=00e539aa';
-import { renderReport } from './lib/report.js?v=00e539aa';
-import { buildNarration } from './lib/narrate.js?v=00e539aa';
-import { PLACES, PLACE_GROUPS, findPlace, DEFAULT_PLACE_ID } from './kb/places.js?v=00e539aa';
-import { radarChart, houseStarChart, wheelChart, cycleTimeline, barChart, elementBars, attachTooltips, extremes, topWithTies } from './charts.js?v=00e539aa';
-import { createSpeaker } from './speak.js?v=00e539aa';
+import { buildChart, houseName, HOUSE_SYSTEMS, DIGNITY_NAMES, PLANET_NAMES } from './lib/astro.js?v=8be9bc87';
+import { analyze } from './lib/analyze.js?v=8be9bc87';
+import { renderReport } from './lib/report.js?v=8be9bc87';
+import { buildNarration } from './lib/narrate.js?v=8be9bc87';
+import { PLACES, PLACE_GROUPS, findPlace, DEFAULT_PLACE_ID } from './kb/places.js?v=8be9bc87';
+import { radarChart, houseStarChart, wheelChart, cycleTimeline, barChart, elementBars, attachTooltips, extremes, topWithTies } from './charts.js?v=8be9bc87';
+import { createSpeaker } from './speak.js?v=8be9bc87';
 
 /* ───────── 常數 ───────── */
 
@@ -312,11 +314,19 @@ function chartFail(text) {
 }
 
 // 回傳 Promise：排完（成功或失敗）才 resolve，本機殼的名冊「開盤」可以等
-function startChart() {
+// 網頁版：出生資料驗證通過後、鎖按鈕開始排盤前，先請客人留姓名電話（lead.js 掛的 window.__leadGate）。
+// 客人按取消＝不排盤；這次開頁已經留過（含改夏令、宮位制自動重排）就不會再問。本機版沒有 __leadGate，直接排、行為不變。
+async function startChart() {
   formError('');
   const f = readForm();
-  if (f.error) { chartFail(f.error); return Promise.resolve(false); }
+  if (f.error) { chartFail(f.error); return false; }
   const btn = $('#btn-go');
+  if (window.__leadGate && !(await window.__leadGate())) {
+    // 按鈕還沒鎖（問完才鎖），保險起見還原成可以再按的樣子
+    btn.disabled = false;
+    btn.textContent = '開始排盤';
+    return false;
+  }
   btn.disabled = true;
   btn.textContent = '排盤中…';
   // 讓「排盤中」先畫出來再算

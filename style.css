@@ -478,6 +478,70 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .sh-chips .none[style]{color:var(--ink2) !important}
 body.no-scroll{overflow:hidden}
 
+/* ---------- 排盤前留姓名電話（只有網頁版的 lead.js 會產生這個視窗；本機版不會出現） ---------- */
+/* 夜色遮罩＋置中粉白紙卡（跟詳解彈出層同一套）；視窗比螢幕高時視窗自己捲。
+   同意勾選與按鈕放在底部固定區（.lead-foot，position:sticky），視窗一打開就看得到，不用先捲。
+   視窗開著時背後的頁面不捲（body:has 鎖住、遮罩 overscroll-behavior:contain，不把捲動傳給頁面） */
+.lead-backdrop{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;
+  padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:rgba(21,11,27,.66);overscroll-behavior:contain}
+body:has(.lead-backdrop){overflow:hidden}
+.lead-dialog{position:relative;width:100%;max-width:480px;max-height:90vh;max-height:90dvh;overflow-y:auto;overflow-x:hidden;
+  overscroll-behavior:contain;background:var(--paper);color:var(--ink);border-radius:16px;padding:18px 16px 0;
+  outline:1px solid rgba(176,132,20,.36);outline-offset:-7px;
+  box-shadow:0 20px 60px rgba(40,5,30,.5),0 0 0 1px rgba(240,212,155,.7);animation:up .18s ease-out}
+/* 底部固定區：不透明（跟視窗同底色），蓋住捲上來的告知文字；左右撐滿視窗、內距跟視窗一樣，上方一條細分隔線。
+   它在告知後面、是一般排版的最後一塊，所以捲到底時告知最後一行會完整露在它上面，不會被蓋住 */
+.lead-foot{position:sticky;bottom:0;z-index:2;margin:10px -16px 0;padding:6px 16px 14px;
+  background:var(--paper);border-top:1px solid var(--line)}
+.lead-title{font:700 20px/1.4 var(--serif);color:var(--wine);letter-spacing:1px}
+.lead-title::before{content:"";display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-1px;
+  background:var(--star-rose) center/14px 14px no-repeat}
+.lead-sub{font-size:14.5px;color:var(--ink2);line-height:1.65;margin-top:4px}
+.lead-field{display:flex;flex-direction:column;gap:4px;margin-top:12px;font-size:15px;font-weight:600;color:var(--ink)}
+.lead-dialog .lead-field input{width:100%;min-height:46px;padding:8px 10px;font-size:16px;font-weight:400;font-family:var(--sans);
+  border:1px solid var(--line2);border-radius:8px;background:#fff;color:var(--ink)}
+/* 防機器人欄位：真人看不到、點不到；不用 display:none（機器人會跳過藏起來的欄位） */
+.lead-dialog input.lead-trap{position:absolute;left:-9999px;top:0;width:1px;height:1px;min-height:0;padding:0;border:0;
+  opacity:0;pointer-events:none}
+.lead-notice{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--tint);
+  font-size:13.5px;line-height:1.65;color:var(--ink2)}
+.lead-notice-h{font-weight:700;color:var(--wine);font-size:14.5px;margin-bottom:4px}
+.lead-notice dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;margin:0}
+.lead-notice dt{font-weight:700;color:var(--ink);white-space:nowrap}
+.lead-notice dd{margin:0;min-width:0;overflow-wrap:anywhere}
+/* 同意勾選：整個 label 都可以點（至少 44px 高） */
+.lead-agree{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding:6px 4px;
+  font-size:14.5px;line-height:1.55;color:var(--ink);cursor:pointer}
+.lead-agree input{flex:0 0 auto;width:22px;height:22px;margin:1px 0 0;accent-color:var(--rose)}
+/* 每一格自己的錯誤字（在那一格正下方）；沒有內容時不佔高度 */
+.lead-ferr{display:block;margin-top:2px;font-size:13.5px;font-weight:600;line-height:1.5;color:#8c1236}
+.lead-ferr:empty{display:none}
+.lead-dialog .lead-field input[aria-invalid="true"]{border-color:#c0284f;box-shadow:0 0 0 1px #c0284f;background:#fff7f9}
+.lead-agree input[aria-invalid="true"]{outline:2px solid #c0284f;outline-offset:2px}
+/* 送出失敗的說明（只有送不出去才出現） */
+.lead-err{margin-top:4px;font-size:14.5px;font-weight:600;line-height:1.5;color:#8c1236}
+.lead-err:empty{display:none}
+.lead-actions{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:8px;margin-top:6px}
+.lead-btn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:48px;padding:8px 16px;
+  border-radius:999px;border:1px solid transparent;font-size:16px;font-weight:700;letter-spacing:1px;line-height:1.35;
+  touch-action:manipulation}
+.lead-btn-main{background:linear-gradient(135deg,#c92a74,#a81d60);border-color:#a81d60;color:#fff;
+  box-shadow:0 6px 16px -8px rgba(168,29,96,.8)}
+.lead-btn-main:hover{background:linear-gradient(135deg,#b3225f,#8f1850)}
+.lead-btn-ghost{background:#fff;color:var(--rose-ink);border-color:#e2bfd0}
+.lead-btn-ghost:hover{background:var(--rose-soft)}
+.lead-btn-skip{display:flex;width:100%;margin-top:6px;background:transparent;color:var(--ink2);font-size:14.5px;font-weight:600;
+  letter-spacing:0;text-decoration:underline;text-underline-offset:3px}
+.lead-btn-skip:hover{color:var(--rose-ink)}
+/* 送出中三顆鈕都鎖住：看得出不能按 */
+.lead-btn[disabled],.lead-btn[disabled]:hover{opacity:.55;cursor:not-allowed;box-shadow:none}
+.lead-btn-ghost[disabled]:hover{background:#fff}
+.lead-btn-main[disabled]:hover{background:linear-gradient(135deg,#c92a74,#a81d60)}
+@media (min-width:420px){
+  .lead-dialog{padding:22px 22px 0}
+  .lead-foot{margin:12px -22px 0;padding:8px 22px 16px}
+}
+
 /* ---------- 較寬的螢幕 ---------- */
 @media (min-width:600px){
   .card{padding:22px 24px}
@@ -532,6 +596,8 @@ body.no-scroll{overflow:hidden}
 }
 @media print{
   .site-head,.form-card,#voice-card,.cta,.report-card{display:none}
+  .lead-backdrop{display:none !important}
+  body:has(.lead-backdrop){overflow:visible}
   body{background:#fff;color:#000}
   #form-card::before,#wheel-card::before,#wheel-card::after,.site-head::before,.site-head::after,.head-in::before,.site-foot::before{display:none}
   #wheel-card{margin-bottom:18px}
